@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <EditText
+        android:id="@+id/txtNombreAmigos"
+        android:hint="Nombre del Producto"
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <EditText
+        android:id="@+id/txtDireccionAmigos"
+        android:hint="Descripción"
+        android:layout_below="@id/txtNombreAmigos"
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <EditText
+        android:id="@+id/txtTelefonoAmigos"
+        android:hint="Precio"
+        android:inputType="numberDecimal"
+        android:layout_below="@id/txtDireccionAmigos"
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <EditText
+        android:id="@+id/txtEmailAmigos"
+        android:hint="Stock"
+        android:inputType="number"
+        android:layout_below="@id/txtTelefonoAmigos"
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <EditText
+        android:id="@+id/txtDuiAmigos"
+        android:hint="Categoría"
+        android:layout_below="@id/txtEmailAmigos"
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <LinearLayout
+        android:id="@+id/linearImagenes"
+        android:layout_below="@id/txtDuiAmigos"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/imgFotoProducto1"
+            android:src="@drawable/camara"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_margin="5dp"
+            android:background="@android:color/darker_gray"
+            android:padding="5dp" />
+
+        <ImageButton
+            android:id="@+id/imgFotoProducto2"
+            android:src="@drawable/camara"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_margin="5dp"
+            android:background="@android:color/darker_gray"
+            android:padding="5dp" />
+
+        <ImageButton
+            android:id="@+id/imgFotoProducto3"
+            android:src="@drawable/camara"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_margin="5dp"
+            android:background="@android:color/darker_gray"
+            android:padding="5dp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/txtIndicacionFotos"
+        android:text="Toca cada cámara para tomar una foto del producto (máx. 3)"
+        android:textSize="12sp"
+        android:layout_below="@id/linearImagenes"
+        android:layout_marginTop="10dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center" />
+
+    <Button
+        android:id="@+id/btnGuardarAmigo"
+        android:text="Guardar Producto"
+        android:layout_below="@id/txtIndicacionFotos"
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabListaAmigo"
+        android:src="@drawable/revertir"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="20dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+</RelativeLayout>
