@@ -6,10 +6,9 @@
     
     <androidx.cardview.widget.CardView
 
-
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        app:cardCornerRadius="150dp"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        app:cardCornerRadius="16dp"
         android:layout_margin="10dp">
         <ImageView
             android:id="@+id/imgFotoAdaptador"
@@ -22,26 +21,27 @@
 
     <TextView
         android:id="@+id/lblNombreAdaptador"
-        android:layout_marginTop="10dp"
-        android:layout_marginLeft="80dp"
-        android:text="Juan Perez"
+        android:textSize="16dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="100dp"
+        android:text="DDDR4 3600Mhz Dual"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
     </TextView>
     <TextView
         android:id="@+id/lblTelefonoAdaptador"
-        android:layout_marginTop="30dp"
-        android:layout_marginLeft="80dp"
-        android:text="1212-2323"
+        android:layout_marginTop="60dp"
+        android:layout_marginLeft="100dp"
+        android:text="Precio 12$ | Stock 12"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
     </TextView>
 
     <TextView
         android:id="@+id/lblEmailAdaptador"
-        android:layout_marginTop="30dp"
-        android:layout_marginLeft="180dp"
-        android:text="juan@gmail.com"
+        android:layout_marginTop="60dp"
+        android:layout_marginLeft="280dp"
+        android:text="Categoria"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
     </TextView>
