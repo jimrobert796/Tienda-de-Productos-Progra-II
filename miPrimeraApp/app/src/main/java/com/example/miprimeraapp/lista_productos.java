@@ -60,21 +60,34 @@ public class lista_productos extends AppCompatActivity {
 
         try {
             AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
-            posicion = info.position;
-            menu.setHeaderTitle(jsonArray.getJSONObject(posicion).getString("nombre"));
+            Producto productoSeleccionado = alProductos.get(posicion);
+            menu.setHeaderTitle(productoSeleccionado.getNombre());
+
         } catch (Exception e) {
             mostrarMsg("Error al mostrar menú: " + e.getMessage());
         }
     }
 
+    // BUG SOLUCIONADO A LA HORA DE FILTRAR
+
     @Override
     public boolean onContextItemSelected(@NonNull MenuItem item) {
         try {
+            Producto productoSeleccionado = alProductos.get(posicion);
+
             if (item.getItemId() == R.id.mnxAgregar) {
                 abrirActivity();
             } else if (item.getItemId() == R.id.mnxModificar) {
                 parametros.putString("accion", "modificar");
-                parametros.putString("producto", jsonArray.getJSONObject(posicion).toString());
+                // Convertir el producto seleccionado a JSON
+                JSONObject jsonProducto = new JSONObject();
+                jsonProducto.put("idProducto", productoSeleccionado.getIdProducto());
+                jsonProducto.put("nombre", productoSeleccionado.getNombre());
+                jsonProducto.put("descripcion", productoSeleccionado.getDescripcion());
+                jsonProducto.put("precio", productoSeleccionado.getPrecio());
+                jsonProducto.put("stock", productoSeleccionado.getStock());
+                jsonProducto.put("categoria", productoSeleccionado.getCategoria());
+                parametros.putString("producto", jsonProducto.toString());
                 abrirActivity();
             } else if (item.getItemId() == R.id.mnxEliminar) {
                 borrarProducto();
