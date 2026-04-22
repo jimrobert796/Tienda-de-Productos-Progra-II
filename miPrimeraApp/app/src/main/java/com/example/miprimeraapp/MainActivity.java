@@ -19,6 +19,7 @@ import androidx.core.content.FileProvider;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
@@ -32,7 +33,8 @@ public class MainActivity extends AppCompatActivity {
     DB db;
     Button btn;
     TextView tempval;
-    String accion = "nuevo", idProducto = "", urlFoto1 = "", urlFoto2 = "", urlFoto3 = "";
+    String accion = "nuevo", idProducto = "", id = "", rev = "";
+    String urlFoto1 = "", urlFoto2 = "", urlFoto3 = "";
     FloatingActionButton fab;
 
     // Array de imágenes para los 3 productos
@@ -43,10 +45,16 @@ public class MainActivity extends AppCompatActivity {
     static final int REQUEST_TAKE_PHOTO = 1;
     static final int REQUEST_PICK_IMAGE = 2;
 
+    detectarInternet di;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Inicializar variables
+        db = new DB(this);
+        di = new detectarInternet(this);
 
         // Inicializar las 3 imágenes
         imgProductos[0] = findViewById(R.id.imgFotoProducto1);
@@ -62,46 +70,47 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        db = new DB(this);
-
+        // Botón guardar
         btn = findViewById(R.id.btnGuardarAmigo);
         btn.setOnClickListener(v -> guardarProducto());
 
+        // FAB para regresar
         fab = findViewById(R.id.fabListaAmigo);
         fab.setOnClickListener(v -> regresarListaProductos());
 
         mostrarDatosProducto();
 
-        // SEGUn esta monda es pa usar hacia atras Nolose rick Metodos del orto
+        // Manejar botón atrás
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
                 regresarListaProductos();
             }
         });
-
-
     }
 
-
-
+    // ============================================
+    // MOSTRAR OPCIONES DE IMAGEN
+    // ============================================
     private void mostrarOpcionesImagen() {
         String[] opciones = {"📷 Tomar foto con cámara", "🖼️ Seleccionar de galería"};
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Seleccionar imagen para producto");
+        builder.setTitle("Seleccionar imagen " + (imagenActual + 1));
         builder.setItems(opciones, (dialog, which) -> {
             if (which == 0) {
-                tomarFoto(); // Opción cámara
+                tomarFoto();
             } else {
-                seleccionarDeGaleria(); // Opción galería
+                seleccionarDeGaleria();
             }
         });
         builder.setCancelable(true);
         builder.show();
     }
 
-    // 📷 TOMAR FOTO CON CÁMARA - Usando el mismo código que funcionaba en amigos
+    // ============================================
+    // TOMAR FOTO CON CÁMARA
+    // ============================================
     private void tomarFoto() {
         tomarFotoIntento = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         File fotoProducto = null;
@@ -121,17 +130,21 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // 🖼️ SELECCIONAR DE GALERÍA
+    // ============================================
+    // SELECCIONAR DE GALERÍA
+    // ============================================
     private void seleccionarDeGaleria() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         intent.setType("image/*");
         startActivityForResult(intent, REQUEST_PICK_IMAGE);
     }
 
-    // 🔧 CREAR ARCHIVO PARA LA FOTO (mismo código que funcionaba)
+    // ============================================
+    // CREAR ARCHIVO PARA LA FOTO
+    // ============================================
     private File crearImgProducto() throws Exception {
         String fechaHoraMs = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        String fileName = "producto_" + fechaHoraMs + "_" + imagenActual;
+        String fileName = "producto_" + fechaHoraMs + "_img" + imagenActual;
         File dirAlmacenamiento = getExternalFilesDir(Environment.DIRECTORY_DCIM);
         if (!dirAlmacenamiento.exists()) {
             dirAlmacenamiento.mkdir();
@@ -141,11 +154,13 @@ public class MainActivity extends AppCompatActivity {
         return image;
     }
 
-    // 💾 GUARDAR IMAGEN DE GALERÍA
+    // ============================================
+    // GUARDAR IMAGEN DESDE GALERÍA
+    // ============================================
     private String guardarImagenDesdeGaleria(Uri uri) {
         try {
             String fechaHoraMs = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-            String fileName = "producto_galeria_" + fechaHoraMs + "_" + imagenActual + ".jpg";
+            String fileName = "producto_galeria_" + fechaHoraMs + "_img" + imagenActual + ".jpg";
             File dirAlmacenamiento = getExternalFilesDir(Environment.DIRECTORY_DCIM);
             if (!dirAlmacenamiento.exists()) {
                 dirAlmacenamiento.mkdir();
@@ -172,6 +187,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // ============================================
+    // RESULTADO DE ACTIVIDAD (FOTO O GALERÍA)
+    // ============================================
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -185,8 +203,7 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     mostrarMensaje("Error: No se pudo obtener la URL de la foto");
                 }
-            }
-            else if (requestCode == REQUEST_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
+            } else if (requestCode == REQUEST_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
                 // Imagen seleccionada de galería
                 Uri selectedImageUri = data.getData();
                 if (selectedImageUri != null) {
@@ -205,6 +222,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // ============================================
+    // MOSTRAR DATOS DEL PRODUCTO (MODIFICAR)
+    // ============================================
     private void mostrarDatosProducto() {
         try {
             Bundle parametros = getIntent().getExtras();
@@ -212,8 +232,17 @@ public class MainActivity extends AppCompatActivity {
                 accion = parametros.getString("accion");
                 if (accion.equals("modificar")) {
                     JSONObject datos = new JSONObject(parametros.getString("producto"));
+
+                    // Guardar _id y _rev de CouchDB
+
+                    if (datos.has("_id") && datos.has("_rev")) {
+                        id = datos.getString("_id");
+                        rev = datos.getString("_rev");
+                    }
+
                     idProducto = datos.getString("idProducto");
 
+                    // Llenar campos
                     tempval = findViewById(R.id.txtNombreAmigos);
                     tempval.setText(datos.getString("nombre"));
 
@@ -221,15 +250,18 @@ public class MainActivity extends AppCompatActivity {
                     tempval.setText(datos.getString("descripcion"));
 
                     tempval = findViewById(R.id.txtTelefonoAmigos);
-                    tempval.setText(datos.getString("precio"));
+                    tempval.setText(String.valueOf(datos.getDouble("precio")));
 
                     tempval = findViewById(R.id.txtEmailAmigos);
-                    tempval.setText(datos.getString("stock"));
+                    tempval.setText(String.valueOf(datos.getInt("stock")));
 
                     tempval = findViewById(R.id.txtDuiAmigos);
                     tempval.setText(datos.getString("categoria"));
 
-                    cargarImagenesProducto(idProducto);
+                    // Cargar imágenes
+                    cargarImagenesProducto(datos);
+                } else {
+                    limpiarCampos();
                 }
             } else {
                 limpiarCampos();
@@ -239,11 +271,105 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void cargarImagenesProducto(String idProducto) {
+    // ============================================
+    // CARGAR IMÁGENES DEL PRODUCTO
+    // ============================================
+    private void cargarImagenesProducto(JSONObject datos) {
         try {
             urlFoto1 = "";
             urlFoto2 = "";
             urlFoto3 = "";
+
+            // Intentar cargar desde CouchDB primero
+            boolean cargadoDesdeCouch = false;
+
+            if (datos.has("imagenes")) {
+                JSONArray imagenesArray = datos.getJSONArray("imagenes");
+
+                if (imagenesArray.length() > 0) {
+                    for (int i = 0; i < imagenesArray.length() && i < 3; i++) {
+                        JSONObject imagen = imagenesArray.getJSONObject(i);
+                        String url = imagen.getString("url");
+
+                        if (url != null && !url.isEmpty()) {
+                            switch (i) {
+                                case 0:
+                                    urlFoto1 = url;
+                                    imgProductos[0].setImageURI(Uri.parse(url));
+                                    break;
+                                case 1:
+                                    urlFoto2 = url;
+                                    imgProductos[1].setImageURI(Uri.parse(url));
+                                    break;
+                                case 2:
+                                    urlFoto3 = url;
+                                    imgProductos[2].setImageURI(Uri.parse(url));
+                                    break;
+                            }
+                            cargadoDesdeCouch = true;
+                        }
+                    }
+                }
+            }
+
+            // Solo cargar desde SQLite si NO se cargaron desde CouchDB
+            if (!cargadoDesdeCouch) {
+                idProducto = datos.getString("idProducto");
+
+                Cursor cImagenes = db.obtener_imagenes(idProducto);
+
+                int contador = 0;
+                while (cImagenes.moveToNext() && contador < 3) {
+                    String urlFoto = cImagenes.getString(0);
+                    int orden = cImagenes.getInt(1);
+
+                    switch (orden) {
+                        case 0:
+                            urlFoto1 = urlFoto;
+                            if (!urlFoto1.isEmpty()) {
+                                imgProductos[0].setImageURI(Uri.parse(urlFoto1));
+                            }
+                            break;
+                        case 1:
+                            urlFoto2 = urlFoto;
+                            if (!urlFoto2.isEmpty()) {
+                                imgProductos[1].setImageURI(Uri.parse(urlFoto2));
+                            }
+                            break;
+                        case 2:
+                            urlFoto3 = urlFoto;
+                            if (!urlFoto3.isEmpty()) {
+                                imgProductos[2].setImageURI(Uri.parse(urlFoto3));
+                            }
+                            break;
+                    }
+                    contador++;
+                }
+                cImagenes.close();
+            }
+
+            // Mostrar imagen placeholder si no hay imagen
+            if (urlFoto1.isEmpty()) {
+                imgProductos[0].setImageResource(R.drawable.camara);
+            }
+            if (urlFoto2.isEmpty()) {
+                imgProductos[1].setImageResource(R.drawable.camara);
+            }
+            if (urlFoto3.isEmpty()) {
+                imgProductos[2].setImageResource(R.drawable.camara);
+            }
+
+        } catch (Exception e) {
+            mostrarMensaje("Error al cargar imágenes: " + e.getMessage());
+        }
+    }
+
+    // Metodo separado para carga de sqlite mejor aun
+    private void cargarImagenesDesdeSQLite(JSONObject datos) {
+        try {
+            mostrarMensaje("Cargando imaganes desde Sqlite Local");
+
+            idProducto = datos.getString("idProducto");
 
             Cursor cImagenes = db.obtener_imagenes(idProducto);
 
@@ -255,41 +381,35 @@ public class MainActivity extends AppCompatActivity {
                 switch (orden) {
                     case 0:
                         urlFoto1 = urlFoto;
+                        if (!urlFoto1.isEmpty()) {
+                            imgProductos[0].setImageURI(Uri.parse(urlFoto1));
+                        }
                         break;
                     case 1:
                         urlFoto2 = urlFoto;
+                        if (!urlFoto2.isEmpty()) {
+                            imgProductos[1].setImageURI(Uri.parse(urlFoto2));
+                        }
                         break;
                     case 2:
                         urlFoto3 = urlFoto;
+                        if (!urlFoto3.isEmpty()) {
+                            imgProductos[2].setImageURI(Uri.parse(urlFoto3));
+                        }
                         break;
                 }
                 contador++;
             }
             cImagenes.close();
 
-            if (!urlFoto1.isEmpty()) {
-                imgProductos[0].setImageURI(Uri.parse(urlFoto1));
-            } else {
-                imgProductos[0].setImageResource(R.drawable.camara);
-            }
-
-            if (!urlFoto2.isEmpty()) {
-                imgProductos[1].setImageURI(Uri.parse(urlFoto2));
-            } else {
-                imgProductos[1].setImageResource(R.drawable.camara);
-            }
-
-            if (!urlFoto3.isEmpty()) {
-                imgProductos[2].setImageURI(Uri.parse(urlFoto3));
-            } else {
-                imgProductos[2].setImageResource(R.drawable.camara);
-            }
-
         } catch (Exception e) {
-            mostrarMensaje("Error al cargar imágenes: " + e.getMessage());
+            mostrarMensaje("Error al cargar imágenes desde SQLite: " + e.getMessage());
         }
     }
 
+    // ============================================
+    // LIMPIAR CAMPOS (NUEVO PRODUCTO)
+    // ============================================
     private void limpiarCampos() {
         idProducto = "";
         urlFoto1 = "";
@@ -316,22 +436,42 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // ============================================
+    // OBTENER URL DE FOTO POR ÍNDICE
+    // ============================================
     private String obtenerUrlFoto(int index) {
         switch (index) {
-            case 0: return urlFoto1;
-            case 1: return urlFoto2;
-            case 2: return urlFoto3;
-            default: return "";
+            case 0:
+                return urlFoto1;
+            case 1:
+                return urlFoto2;
+            case 2:
+                return urlFoto3;
+            default:
+                return "";
         }
     }
 
+    // ============================================
+    // GUARDAR URL DE FOTO POR ÍNDICE
+    // ============================================
     private void guardarUrlFoto(int index, String url) {
         switch (index) {
-            case 0: urlFoto1 = url; break;
-            case 1: urlFoto2 = url; break;
-            case 2: urlFoto3 = url; break;
+            case 0:
+                urlFoto1 = url;
+                break;
+            case 1:
+                urlFoto2 = url;
+                break;
+            case 2:
+                urlFoto3 = url;
+                break;
         }
     }
+
+    // ============================================
+    // GUARDAR PRODUCTO
+    // ============================================
     private void guardarProducto() {
         try {
             // Obtener valores de los campos
@@ -350,32 +490,26 @@ public class MainActivity extends AppCompatActivity {
             tempval = findViewById(R.id.txtDuiAmigos);
             String categoria = tempval.getText().toString().trim();
 
-            // VALIDACIONES
+            // ============ VALIDACIONES ============
 
-            // Validar campo NOMBRE
             if (nombre.isEmpty()) {
                 mostrarMensaje("Por favor ingrese el nombre del producto");
                 findViewById(R.id.txtNombreAmigos).requestFocus();
                 return;
             }
 
-
-            // Validar campo DESCRIPCIÓN
             if (descripcion.isEmpty()) {
                 mostrarMensaje("Por favor ingrese la descripción del producto");
                 findViewById(R.id.txtDireccionAmigos).requestFocus();
                 return;
             }
 
-
-            // Validar campo PRECIO
             if (precio.isEmpty()) {
                 mostrarMensaje("Por favor ingrese el precio del producto");
                 findViewById(R.id.txtTelefonoAmigos).requestFocus();
                 return;
             }
 
-            // Validar que el precio sea un número válido y mayor a 0
             double precioDouble;
             try {
                 precioDouble = Double.parseDouble(precio);
@@ -390,14 +524,12 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // Validar campo STOCK
             if (stock.isEmpty()) {
                 mostrarMensaje("Por favor ingrese el stock del producto");
                 findViewById(R.id.txtEmailAmigos).requestFocus();
                 return;
             }
 
-            // Validar que el stock sea un número entero válido y mayor o igual a 0
             int stockInt;
             try {
                 stockInt = Integer.parseInt(stock);
@@ -412,14 +544,12 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // Validar campo CATEGORÍA (opcional pero recomendado)
             if (categoria.isEmpty()) {
                 mostrarMensaje("Por favor ingrese la categoría del producto");
                 findViewById(R.id.txtDuiAmigos).requestFocus();
                 return;
             }
 
-            // Validar que al menos tenga una imagen (opcional - si es requerida)
             int imagenesValidas = 0;
             if (urlFoto1 != null && !urlFoto1.isEmpty()) imagenesValidas++;
             if (urlFoto2 != null && !urlFoto2.isEmpty()) imagenesValidas++;
@@ -430,35 +560,92 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // GUARDAR PRODUCTO
+            // ============ GUARDAR EN BASE DE DATOS LOCAL ============
             String[] imagenes = {urlFoto1, urlFoto2, urlFoto3};
             String[] datos = {idProducto, nombre, descripcion, precio, stock, categoria};
 
             String respuesta = db.administrar_productos(accion, datos, imagenes);
 
-            if (respuesta.equals("ok")) {
-                mostrarMensaje("Producto guardado con éxito.");
-                regresarListaProductos();
-            } else {
-                mostrarMensaje("Error al guardar: " + respuesta);
+            if (!respuesta.equals("ok")) {
+                mostrarMensaje("Error al guardar en local: " + respuesta);
+                return;
             }
 
-        } catch (NumberFormatException e) {
-            mostrarMensaje("Error: Precio y Stock deben ser números válidos");
+            // ============ GUARDAR EN COUCHDB ============
+            if (di.hayConexionInternet()) {
+                JSONObject datosProducto = new JSONObject();
+
+                if (accion.equals("modificar")) {
+                    datosProducto.put("_id", id);
+                    datosProducto.put("_rev", rev);
+                }
+
+                datosProducto.put("idProducto", idProducto);
+                datosProducto.put("nombre", nombre);
+                datosProducto.put("descripcion", descripcion);
+                datosProducto.put("precio", precioDouble);
+                datosProducto.put("stock", stockInt);
+                datosProducto.put("categoria", categoria);
+                datosProducto.put("tipo", "producto");
+                datosProducto.put("fecha_creacion", System.currentTimeMillis());
+
+                // Crear array de imágenes
+                JSONArray imagenesArray = new JSONArray();
+                String[] urls = {urlFoto1, urlFoto2, urlFoto3};
+                for (String url : urls) {
+                    if (url != null && !url.isEmpty()) {
+                        JSONObject imagen = new JSONObject();
+                        imagen.put("url", url);
+                        imagen.put("fecha_agregada", System.currentTimeMillis());
+                        imagenesArray.put(imagen);
+                    }
+                }
+                datosProducto.put("imagenes", imagenesArray);
+
+                // Determinar método HTTP
+                String metodo = accion.equals("modificar") ? "PUT" : "POST";
+                String url = utilidades.url_mantenimiento;
+
+                if (accion.equals("modificar")) {
+                    url = utilidades.url_mantenimiento + "/" + id;
+                }
+
+                enviarDatosServidor objEnviar = new enviarDatosServidor(this);
+                respuesta = objEnviar.execute(datosProducto.toString(), metodo, url).get();
+
+                JSONObject respuestaJSON = new JSONObject(respuesta);
+                if (!respuestaJSON.getBoolean("ok")) {
+                    mostrarMensaje("Error al guardar en servidor: " + respuesta);
+                } else {
+                    id = respuestaJSON.getString("id");
+                    rev = respuestaJSON.getString("rev");
+                    mostrarMensaje("Producto guardado con éxito en servidor.");
+                }
+            } else {
+                mostrarMensaje("Producto guardado en local (sin conexión a internet).");
+            }
+
+            regresarListaProductos();
+
         } catch (Exception e) {
             mostrarMensaje("Error al guardar: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
+    // ============================================
+    // MOSTRAR MENSAJE
+    // ============================================
     private void mostrarMensaje(String msg) {
         Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
     }
 
+    // ============================================
+    // REGRESAR A LISTA
+    // ============================================
     private void regresarListaProductos() {
         Intent intent = new Intent(this, lista_productos.class);
         startActivity(intent);
         finish();
     }
-
-
 }
