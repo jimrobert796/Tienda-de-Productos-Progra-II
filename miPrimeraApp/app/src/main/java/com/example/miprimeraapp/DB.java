@@ -54,7 +54,8 @@ public class DB extends SQLiteOpenHelper {
 
             switch (accion) {
                 case "nuevo":
-                    sql = "INSERT INTO productos(nombre, descripcion, precio, stock, categoria) VALUES(" +
+                    sql = "INSERT INTO productos(idProducto, nombre, descripcion, precio, stock, categoria) VALUES(" +
+                            "'" + datos[0] + "'," +      // 🔥 datos[0] es idProducto
                             "'" + datos[1] + "'," +
                             "'" + datos[2] + "'," +
                             datos[3] + "," +

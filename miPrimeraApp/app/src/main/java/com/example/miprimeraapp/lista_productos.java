@@ -56,6 +56,12 @@ public class lista_productos extends AppCompatActivity {
 
         di = new detectarInternet(this);
 
+        // 🔥 SINCRONIZAR PENDIENTES AL ABRIR
+        if (di.hayConexionInternet()) {
+            sincronizarPendientes();
+            sincronizarEliminacionesPendientes();
+        }
+
         obtenerProductos();
         buscarProductos();
     }
@@ -161,6 +167,7 @@ public class lista_productos extends AppCompatActivity {
         try {
             JSONObject doc = getDoc(posicion);
             String nombre = doc.getString("nombre");
+            String idProducto = doc.getString("idProducto");
 
             AlertDialog.Builder confirmacion = new AlertDialog.Builder(this);
             confirmacion.setTitle("¿Está seguro de borrar?");
@@ -171,31 +178,44 @@ public class lista_productos extends AppCompatActivity {
 
                     // 🔥 eliminar local
                     String respuesta = db.administrar_productos("eliminar",
-                            new String[]{doc.getString("idProducto")},
+                            new String[]{idProducto},
                             new String[]{});
 
-                    // 🔥 eliminar servidor SOLO si existe _id y _rev
-                    if (respuesta.equals("ok") && di.hayConexionInternet()
-                            && doc.has("_id") && doc.has("_rev")) {
-
-                        JSONObject datosProducto = new JSONObject();
-
-                        String _id = doc.getString("_id");
-                        String _rev = doc.getString("_rev");
-
-                        String url = utilidades.url_mantenimiento + "/" + _id + "?rev=" + _rev;
-
-                        enviarDatosServidor obj = new enviarDatosServidor(this);
-                        String resp = obj.execute(datosProducto.toString(), "DELETE", url).get();
-
-                        JSONObject respuestaJSON = new JSONObject(resp);
-
-                        if (!respuestaJSON.getBoolean("ok")) {
-                            mostrarMsg("Error servidor: " + resp);
-                        }
+                    if (!respuesta.equals("ok")) {
+                        mostrarMsg("Error al eliminar localmente");
+                        return;
                     }
 
-                    if (respuesta.equals("ok")) {
+                    // 🔥 eliminar servidor SOLO si existe _id y _rev
+                    if (di.hayConexionInternet() && doc.has("_id") && doc.has("_rev")) {
+                        // Si hay internet, intenta eliminar del servidor
+                        String _id = doc.getString("_id");
+                        String _rev = doc.getString("_rev");
+                        String url = utilidades.url_mantenimiento + "/" + _id + "?rev=" + _rev;
+
+                        try {
+                            enviarDatosServidor obj = new enviarDatosServidor(this);
+                            String resp = obj.execute("", "DELETE", url).get();
+                            JSONObject respuestaJSON = new JSONObject(resp);
+
+                            if (!respuestaJSON.getBoolean("ok")) {
+                                mostrarMsg("Error servidor: " + resp);
+                            } else {
+                                mostrarMsg("Producto eliminado correctamente");
+                            }
+                        } catch (Exception e) {
+                            // Si falla la sincronización, guardar como pendiente
+                            guardarEliminacionPendiente(idProducto, _id, _rev);
+                            mostrarMsg("⚠️ Se eliminará del servidor cuando haya conexión");
+                        }
+                    } else if (!di.hayConexionInternet() && doc.has("_id") && doc.has("_rev")) {
+                        // 🔥 SIN INTERNET: Guardar eliminación como pendiente
+                        String _id = doc.getString("_id");
+                        String _rev = doc.getString("_rev");
+                        guardarEliminacionPendiente(idProducto, _id, _rev);
+                        mostrarMsg("📱 Eliminado localmente. Se sincronizará cuando hay conexión");
+                    } else {
+                        // Es un producto solo local, sin _id en servidor
                         mostrarMsg("Producto eliminado correctamente");
                     }
 
@@ -211,6 +231,75 @@ public class lista_productos extends AppCompatActivity {
 
         } catch (Exception e) {
             mostrarMsg("Error al borrar: " + e.getMessage());
+        }
+    }
+
+    // 🔥 NUEVA FUNCIÓN: Guardar eliminación como pendiente
+    private void guardarEliminacionPendiente(String idProducto, String _id, String _rev) {
+        try {
+            android.content.SharedPreferences sp = getSharedPreferences("pendientes_eliminacion", MODE_PRIVATE);
+            android.content.SharedPreferences.Editor editor = sp.edit();
+
+            editor.putString("eliminar_" + idProducto, _id);
+            editor.putString("eliminar_rev_" + idProducto, _rev);
+            editor.apply();
+
+            Log.d("ELIMINAR", "Guardado para eliminar: " + idProducto + " | _id: " + _id);
+        } catch (Exception e) {
+            Log.e("ELIMINAR_ERROR", "Error guardando eliminación: " + e.getMessage());
+        }
+    }
+
+    // 🔥 SINCRONIZAR ELIMINACIONES PENDIENTES
+    private void sincronizarEliminacionesPendientes() {
+        if (!di.hayConexionInternet()) {
+            Log.d("SYNC_DELETE", "Sin conexión a internet");
+            return;
+        }
+
+        android.content.SharedPreferences sp = getSharedPreferences("pendientes_eliminacion", MODE_PRIVATE);
+        java.util.Map<String, ?> pendientes = sp.getAll();
+
+        int eliminados = 0;
+        int errores = 0;
+
+        for (String key : pendientes.keySet()) {
+            if (key.startsWith("eliminar_") && !key.endsWith("_rev")) {
+                String idProducto = key.replace("eliminar_", "");
+                String _id = (String) pendientes.get(key);
+                String _rev = sp.getString("eliminar_rev_" + idProducto, "");
+
+                try {
+                    String url = utilidades.url_mantenimiento + "/" + _id + "?rev=" + _rev;
+
+                    Log.d("SYNC_DELETE", "Eliminando: " + idProducto + " | _id: " + _id);
+
+                    enviarDatosServidor obj = new enviarDatosServidor(this);
+                    String resp = obj.execute("", "DELETE", url).get();
+                    JSONObject respuestaJSON = new JSONObject(resp);
+
+                    if (respuestaJSON.getBoolean("ok")) {
+                        // Eliminar de pendientes
+                        android.content.SharedPreferences.Editor editor = sp.edit();
+                        editor.remove(key);
+                        editor.remove("eliminar_rev_" + idProducto);
+                        editor.apply();
+
+                        eliminados++;
+                        Log.d("SYNC_DELETE", "✅ Eliminado: " + idProducto);
+                    } else {
+                        errores++;
+                        Log.e("SYNC_DELETE_ERROR", "Error: " + resp);
+                    }
+                } catch (Exception e) {
+                    errores++;
+                    Log.e("SYNC_DELETE_ERROR", "Exception: " + e.getMessage());
+                }
+            }
+        }
+
+        if (eliminados > 0 || errores > 0) {
+            Log.d("SYNC_DELETE", "Resumen: " + eliminados + " eliminados, " + errores + " errores");
         }
     }
 
@@ -356,5 +445,91 @@ public class lista_productos extends AppCompatActivity {
     }
     private void mostrarMsg(String msg) {
         Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+    }
+    // 🔥 SINCRONIZAR PENDIENTES
+    private void sincronizarPendientes() {
+        if (!di.hayConexionInternet()) {
+            Log.d("SYNC", "Sin conexión a internet");
+            return;
+        }
+
+        android.content.SharedPreferences sp = getSharedPreferences("pendientes", MODE_PRIVATE);
+        java.util.Map<String, ?> pendientes = sp.getAll();
+
+        int sincronizados = 0;
+        int errores = 0;
+
+        for (String key : pendientes.keySet()) {
+            if (key.startsWith("pendiente_")) {
+                String idProducto = key.replace("pendiente_", "");
+                String datos = (String) pendientes.get(key);
+                String accion = sp.getString("accion_" + idProducto, "nuevo");
+
+                try {
+                    JSONObject datosJSON = new JSONObject(datos);
+
+                    String metodo = "POST";  // Por defecto: crear nuevo
+                    String url = utilidades.url_mantenimiento;
+
+                    // 🔥 SI YA TIENE _id, USAR PUT (actualizar)
+                    if (datosJSON.has("_id") && !datosJSON.getString("_id").isEmpty()) {
+                        String _id = datosJSON.getString("_id");
+                        String _rev = datosJSON.getString("_rev");
+
+                        url = utilidades.url_mantenimiento + "/" + _id;
+                        metodo = "PUT";
+
+                        Log.d("SYNC", "Actualizando: " + idProducto + " | Método: PUT | _id: " + _id);
+                    } else {
+                        Log.d("SYNC", "Creando: " + idProducto + " | Método: POST");
+                    }
+
+                    // Enviar a servidor
+                    enviarDatosServidor objEnviar = new enviarDatosServidor(this);
+                    String respuesta = objEnviar.execute(datosJSON.toString(), metodo, url).get();
+                    JSONObject resp = new JSONObject(respuesta);
+
+                    if (resp.getBoolean("ok")) {
+                        // 🔥 SI FUE POST (crear), guardar el _id retornado
+                        if (metodo.equals("POST")) {
+                            String nuevoId = resp.getString("id");
+                            String nuevoRev = resp.getString("rev");
+
+                            // Actualizar el JSON con el nuevo _id y _rev
+                            datosJSON.put("_id", nuevoId);
+                            datosJSON.put("_rev", nuevoRev);
+
+                            // Guardar de nuevo para próximas modificaciones
+                            android.content.SharedPreferences.Editor editor = sp.edit();
+                            editor.putString("pendiente_" + idProducto, datosJSON.toString());
+                            editor.apply();
+
+                            Log.d("SYNC", "Obtenido _id: " + nuevoId + " | _rev: " + nuevoRev);
+                        }
+
+                        // Eliminar de pendientes
+                        android.content.SharedPreferences.Editor editor = sp.edit();
+                        editor.remove(key);
+                        editor.remove("accion_" + idProducto);
+                        editor.apply();
+
+                        sincronizados++;
+                        Log.d("SYNC", "✅ Sincronizado: " + idProducto);
+                        obtenerProductos();
+                    } else {
+                        errores++;
+                        Log.e("SYNC_ERROR", "Error en servidor para " + idProducto + ": " + respuesta);
+                    }
+                } catch (Exception e) {
+                    errores++;
+                    Log.e("SYNC_ERROR", "Exception sincronizando " + idProducto + ": " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        if (sincronizados > 0 || errores > 0) {
+            Log.d("SYNC", "Resumen: " + sincronizados + " sincronizados, " + errores + " errores");
+        }
     }
 }

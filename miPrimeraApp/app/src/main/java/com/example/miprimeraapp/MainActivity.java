@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -575,57 +576,71 @@ public class MainActivity extends AppCompatActivity {
             }
 
             // ============ GUARDAR EN COUCHDB ============
+            // ============ GUARDAR EN COUCHDB ============
+            JSONObject datosProducto = new JSONObject();
+
+            if (accion.equals("modificar")) {
+                datosProducto.put("_id", id);
+                datosProducto.put("_rev", rev);
+            }
+
+            datosProducto.put("idProducto", idProducto);
+            datosProducto.put("nombre", nombre);
+            datosProducto.put("descripcion", descripcion);
+            datosProducto.put("precio", precioDouble);
+            datosProducto.put("stock", stockInt);
+            datosProducto.put("categoria", categoria);
+            datosProducto.put("tipo", "producto");
+            datosProducto.put("fecha_creacion", System.currentTimeMillis());
+
+            // Crear array de imágenes
+            JSONArray imagenesArray = new JSONArray();
+            String[] urls = {urlFoto1, urlFoto2, urlFoto3};
+            for (String url : urls) {
+                if (url != null && !url.isEmpty()) {
+                    JSONObject imagen = new JSONObject();
+                    imagen.put("url", url);
+                    imagen.put("fecha_agregada", System.currentTimeMillis());
+                    imagenesArray.put(imagen);
+                }
+            }
+            datosProducto.put("imagenes", imagenesArray);
+
+            // 🔥 SI HAY INTERNET: Sincronizar
             if (di.hayConexionInternet()) {
-                JSONObject datosProducto = new JSONObject();
-
-                if (accion.equals("modificar")) {
-                    datosProducto.put("_id", id);
-                    datosProducto.put("_rev", rev);
-                }
-
-                datosProducto.put("idProducto", idProducto);
-                datosProducto.put("nombre", nombre);
-                datosProducto.put("descripcion", descripcion);
-                datosProducto.put("precio", precioDouble);
-                datosProducto.put("stock", stockInt);
-                datosProducto.put("categoria", categoria);
-                datosProducto.put("tipo", "producto");
-                datosProducto.put("fecha_creacion", System.currentTimeMillis());
-
-                // Crear array de imágenes
-                JSONArray imagenesArray = new JSONArray();
-                String[] urls = {urlFoto1, urlFoto2, urlFoto3};
-                for (String url : urls) {
-                    if (url != null && !url.isEmpty()) {
-                        JSONObject imagen = new JSONObject();
-                        imagen.put("url", url);
-                        imagen.put("fecha_agregada", System.currentTimeMillis());
-                        imagenesArray.put(imagen);
-                    }
-                }
-                datosProducto.put("imagenes", imagenesArray);
-
-                // Determinar método HTTP
                 String metodo = accion.equals("modificar") ? "PUT" : "POST";
                 String url = utilidades.url_mantenimiento;
-
                 if (accion.equals("modificar")) {
                     url = utilidades.url_mantenimiento + "/" + id;
                 }
 
-                enviarDatosServidor objEnviar = new enviarDatosServidor(this);
-                respuesta = objEnviar.execute(datosProducto.toString(), metodo, url).get();
+                try {
+                    enviarDatosServidor objEnviar = new enviarDatosServidor(this);
+                    respuesta = objEnviar.execute(datosProducto.toString(), metodo, url).get();
+                    JSONObject respuestaJSON = new JSONObject(respuesta);
 
-                JSONObject respuestaJSON = new JSONObject(respuesta);
-                if (!respuestaJSON.getBoolean("ok")) {
-                    mostrarMensaje("Error al guardar en servidor: " + respuesta);
-                } else {
-                    id = respuestaJSON.getString("id");
-                    rev = respuestaJSON.getString("rev");
-                    mostrarMensaje("Producto guardado con éxito en servidor.");
+                    if (respuestaJSON.getBoolean("ok")) {
+                        id = respuestaJSON.getString("id");
+                        rev = respuestaJSON.getString("rev");
+
+                        datosProducto.put("_id", id);
+                        datosProducto.put("_rev", rev);
+
+                        mostrarMensaje("✅ Sincronizado con servidor");
+                    } else {
+                        // 🔥 Si falla, guardar como pendiente
+                        guardarEnPendientes(idProducto, accion, datosProducto);
+                        mostrarMensaje("⚠️ Se sincronizará después");
+                    }
+                } catch (Exception e) {
+                    // 🔥 Si hay error, guardar como pendiente
+                    guardarEnPendientes(idProducto, accion, datosProducto);
+                    mostrarMensaje("⚠️ Se sincronizará cuando hay conexión");
                 }
             } else {
-                mostrarMensaje("Producto guardado en local (sin conexión a internet).");
+                // 🔥 SIN INTERNET: Guardar como pendiente
+                guardarEnPendientes(idProducto, accion, datosProducto);
+                mostrarMensaje("📱 Guardado localmente. Se sincronizará cuando hay conexión");
             }
 
             regresarListaProductos();
@@ -633,6 +648,24 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             mostrarMensaje("Error al guardar: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    // 🔥 GUARDAR EN PENDIENTES (SharedPreferences)
+    private void guardarEnPendientes(String idProducto, String accion, JSONObject datos) {
+        try {
+            android.content.SharedPreferences sp = getSharedPreferences("pendientes", MODE_PRIVATE);
+            android.content.SharedPreferences.Editor editor = sp.edit();
+
+            // Guardar los datos del producto
+            editor.putString("pendiente_" + idProducto, datos.toString());
+            // Guardar la acción (nuevo o modificar)
+            editor.putString("accion_" + idProducto, accion);
+            editor.apply();
+
+            Log.d("PENDIENTE", "Guardado para producto: " + idProducto + " | Acción: " + accion);
+        } catch (Exception e) {
+            Log.e("PENDIENTE_ERROR", "Error guardando: " + e.getMessage());
         }
     }
 
