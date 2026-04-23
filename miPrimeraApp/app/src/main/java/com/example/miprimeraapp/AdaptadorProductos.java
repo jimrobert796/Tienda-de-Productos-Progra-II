@@ -10,6 +10,8 @@ import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 
 public class AdaptadorProductos extends BaseAdapter {
@@ -49,10 +51,13 @@ public class AdaptadorProductos extends BaseAdapter {
             tempVal.setText(producto.getNombre());
 
             tempVal = itemView.findViewById(R.id.lblTelefonoAdaptador);
-            tempVal.setText("$" + String.format("%.2f", producto.getPrecio()) + " | Stock: " + producto.getStock());
+            tempVal.setText("$" + String.format("%.2f", producto.getPrecio()) + " | Stock: " + producto.getStock()+" | costo"+ producto.getCosto());
 
+            // Se muestra el costo
             tempVal = itemView.findViewById(R.id.lblEmailAdaptador);
-            tempVal.setText(producto.getCategoria());
+
+            String ganancia = calculoGanancia(producto.getPrecio(), producto.getCosto());
+            tempVal.setText("Ganancia:" + ganancia);
 
             ImageView img = itemView.findViewById(R.id.imgFotoAdaptador);
             String fotoPrincipal = producto.getImagenPrincipal();
@@ -64,5 +69,10 @@ public class AdaptadorProductos extends BaseAdapter {
             Toast.makeText(context, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
         return itemView;
+    }
+
+    private String calculoGanancia(Double precio, Double costo) {
+        Double ganancia = precio - costo;
+        return String.format("%.2f", ganancia);
     }
 }

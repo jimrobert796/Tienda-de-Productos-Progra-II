@@ -9,7 +9,7 @@ import androidx.annotation.Nullable;
 
 // Constructor de la base de datos
 public class DB extends SQLiteOpenHelper {
-    private static final String DATABASE_NAME = "tienda";
+    private static final String DATABASE_NAME = "jimmy";
     private static final int DATABASE_VERSION = 1;
 
     // Tabla de productos
@@ -19,6 +19,7 @@ public class DB extends SQLiteOpenHelper {
             "descripcion TEXT, " +
             "precio REAL, " +
             "stock INTEGER, " +
+            "costo REAL, " +
             "categoria TEXT)";
 
     // Tabla de imágenes (relación muchos a uno con productos)
@@ -54,13 +55,14 @@ public class DB extends SQLiteOpenHelper {
 
             switch (accion) {
                 case "nuevo":
-                    sql = "INSERT INTO productos(idProducto, nombre, descripcion, precio, stock, categoria) VALUES(" +
-                            "'" + datos[0] + "'," +      // 🔥 datos[0] es idProducto
+                    sql = "INSERT INTO productos(idProducto, nombre, descripcion, precio, stock, costo, categoria) VALUES(" +
+                            datos[0] + "," +
                             "'" + datos[1] + "'," +
                             "'" + datos[2] + "'," +
                             datos[3] + "," +
-                            datos[4] + "," +
-                            "'" + datos[5] + "'" +
+                            datos[4] + "," +      // costo
+                            datos[5] + "," +      // stock
+                            "'" + datos[6] + "'" +
                             ")";
                     db.execSQL(sql);
 
@@ -80,8 +82,9 @@ public class DB extends SQLiteOpenHelper {
                             "descripcion='" + datos[2] + "'," +
                             "precio=" + datos[3] + "," +
                             "stock=" + datos[4] + "," +
-                            "categoria='" + datos[5] + "' " +
-                            "WHERE idProducto='" + datos[0] + "'";
+                            "costo=" + datos[5] + "," +
+                            "categoria='" + datos[6] + "' " +
+                            "WHERE idProducto=" + datos[0];
                     db.execSQL(sql);
 
                     // Eliminar imágenes antiguas y guardar las nuevas

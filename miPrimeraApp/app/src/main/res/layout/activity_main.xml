@@ -48,9 +48,20 @@
         android:layout_height="wrap_content" />
 
     <EditText
+        android:id="@+id/txtCosto"
+        android:hint="Costo"
+        android:inputType="numberDecimal"
+        android:layout_below="@id/txtEmailAmigos"
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <EditText
         android:id="@+id/txtDuiAmigos"
         android:hint="Categoría"
-        android:layout_below="@id/txtEmailAmigos"
+        android:layout_below="@id/txtCosto"
         android:layout_marginTop="20dp"
         android:layout_marginLeft="20dp"
         android:layout_marginRight="20dp"
@@ -111,7 +122,7 @@
         android:id="@+id/btnGuardarAmigo"
         android:text="Guardar Producto"
         android:layout_below="@id/txtIndicacionFotos"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="40dp"
         android:layout_marginLeft="20dp"
         android:layout_marginRight="20dp"
         android:layout_width="match_parent"

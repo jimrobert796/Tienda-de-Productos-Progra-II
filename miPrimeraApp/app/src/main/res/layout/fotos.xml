@@ -30,9 +30,10 @@
     </TextView>
     <TextView
         android:id="@+id/lblTelefonoAdaptador"
-        android:layout_marginTop="60dp"
+        android:layout_marginTop="62dp"
         android:layout_marginLeft="100dp"
-        android:text="Precio 12$ | Stock 12"
+        android:textSize="12dp"
+        android:text="Precio 12$ | Stock 12 | costo 12"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
     </TextView>
@@ -41,7 +42,7 @@
         android:id="@+id/lblEmailAdaptador"
         android:layout_marginTop="60dp"
         android:layout_marginLeft="280dp"
-        android:text="Categoria"
+        android:text="Ganancia"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
     </TextView>

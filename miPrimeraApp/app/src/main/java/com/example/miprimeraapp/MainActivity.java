@@ -256,6 +256,9 @@ public class MainActivity extends AppCompatActivity {
                     tempval = findViewById(R.id.txtEmailAmigos);
                     tempval.setText(String.valueOf(datos.getInt("stock")));
 
+                    tempval = findViewById(R.id.txtCosto);
+                    tempval.setText(String.valueOf(datos.getDouble("costo")));
+
                     tempval = findViewById(R.id.txtDuiAmigos);
                     tempval.setText(datos.getString("categoria"));
 
@@ -491,6 +494,9 @@ public class MainActivity extends AppCompatActivity {
             tempval = findViewById(R.id.txtEmailAmigos);
             String stock = tempval.getText().toString().trim();
 
+            tempval = findViewById(R.id.txtCosto);
+            String costo = tempval.getText().toString().trim();
+
             tempval = findViewById(R.id.txtDuiAmigos);
             String categoria = tempval.getText().toString().trim();
 
@@ -548,6 +554,20 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
+            double costoDouble;
+            try {
+                costoDouble = Double.parseDouble(costo);
+                if (costoDouble <= 0) {
+                    mostrarMensaje("El costo debe ser mayor a 0");
+                    findViewById(R.id.txtCosto).requestFocus();
+                    return;
+                }
+            } catch (NumberFormatException e) {
+                mostrarMensaje("El costo debe ser un número válido");
+                findViewById(R.id.txtCosto).requestFocus();
+                return;
+            }
+
             if (categoria.isEmpty()) {
                 mostrarMensaje("Por favor ingrese la categoría del producto");
                 findViewById(R.id.txtDuiAmigos).requestFocus();
@@ -566,7 +586,7 @@ public class MainActivity extends AppCompatActivity {
 
             // ============ GUARDAR EN BASE DE DATOS LOCAL ============
             String[] imagenes = {urlFoto1, urlFoto2, urlFoto3};
-            String[] datos = {idProducto, nombre, descripcion, precio, stock, categoria};
+            String[] datos = {idProducto, nombre, descripcion, precio, stock, costo, categoria};
 
             String respuesta = db.administrar_productos(accion, datos, imagenes);
 
@@ -589,6 +609,7 @@ public class MainActivity extends AppCompatActivity {
             datosProducto.put("descripcion", descripcion);
             datosProducto.put("precio", precioDouble);
             datosProducto.put("stock", stockInt);
+            datosProducto.put("costo", costoDouble);
             datosProducto.put("categoria", categoria);
             datosProducto.put("tipo", "producto");
             datosProducto.put("fecha_creacion", System.currentTimeMillis());
