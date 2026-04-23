@@ -477,6 +477,9 @@ public class MainActivity extends AppCompatActivity {
             // Obtener valores de los campos
             tempval = findViewById(R.id.txtNombreAmigos);
             String nombre = tempval.getText().toString().trim();
+            if (accion.equals("nuevo")) {
+                idProducto = String.valueOf(System.currentTimeMillis());
+            }
 
             tempval = findViewById(R.id.txtDireccionAmigos);
             String descripcion = tempval.getText().toString().trim();

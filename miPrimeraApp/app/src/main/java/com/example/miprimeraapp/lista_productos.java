@@ -115,10 +115,17 @@ public class lista_productos extends AppCompatActivity {
 
                         // Comparar por idProducto
                         if (docOriginal.getString("idProducto").equals(productoSeleccionado.getIdProducto())) {
+
                             if (docOriginal.has("_id")) {
                                 jsonProducto.put("_id", docOriginal.getString("_id"));
                                 jsonProducto.put("_rev", docOriginal.getString("_rev"));
                             }
+
+                            // 🔥 FIX IMÁGENES
+                            if (docOriginal.has("imagenes")) {
+                                jsonProducto.put("imagenes", docOriginal.getJSONArray("imagenes"));
+                            }
+
                             break;
                         }
                     }
@@ -287,22 +294,39 @@ public class lista_productos extends AppCompatActivity {
 
                 for (int i = 0; i < jsonArray.length(); i++) {
 
-                    // 🔥 Detectar si viene de servidor o local
                     JSONObject doc;
                     try {
-                        doc = jsonArray.getJSONObject(i).getJSONObject("value"); // CouchDB
+                        doc = jsonArray.getJSONObject(i).getJSONObject("value"); // online
                     } catch (Exception e) {
-                        doc = jsonArray.getJSONObject(i); // SQLite
+                        doc = jsonArray.getJSONObject(i); // offline
                     }
 
-                    // 🔥 Obtener imágenes desde SQLite (SIEMPRE local)
                     ArrayList<String> imagenes = new ArrayList<>();
-                    Cursor cImagenes = db.obtener_imagenes(doc.getString("idProducto"));
 
-                    while (cImagenes.moveToNext()) {
-                        imagenes.add(cImagenes.getString(0));
+                    // ========= SI VIENE DE COUCHDB =========
+                    if (doc.has("imagenes")) {
+                        JSONArray imgs = doc.getJSONArray("imagenes");
+
+                        for (int j = 0; j < imgs.length(); j++) {
+                            JSONObject img = imgs.getJSONObject(j);
+                            String url = img.getString("url");
+
+                            if (!url.isEmpty()) {
+                                imagenes.add(url);
+                            }
+                        }
                     }
-                    cImagenes.close();
+
+                    // ========= SI NO HAY EN COUCHDB, BUSCAR LOCAL =========
+                    if (imagenes.isEmpty()) {
+                        Cursor cImagenes = db.obtener_imagenes(doc.getString("idProducto"));
+
+                        while (cImagenes.moveToNext()) {
+                            imagenes.add(cImagenes.getString(0));
+                        }
+
+                        cImagenes.close();
+                    }
 
                     Producto producto = new Producto(
                             doc.getString("idProducto"),
@@ -325,11 +349,11 @@ public class lista_productos extends AppCompatActivity {
                 mostrarMsg("No hay productos que mostrar");
                 abrirActivity();
             }
+
         } catch (Exception e) {
             mostrarMsg(e.getMessage());
         }
     }
-
     private void mostrarMsg(String msg) {
         Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
     }
